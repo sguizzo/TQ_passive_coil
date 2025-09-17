@@ -1,0 +1,11 @@
+<oft>
+  <thincurr>
+    <eta>6.0000E-05 6.0000E-05 2.0000E-05</eta>
+      <icoils>
+        <coil_set name="plasma">
+        </coil_set>
+      </icoils>
+      <vcoils>
+       </vcoils>
+  </thincurr>
+</oft>
