@@ -1,0 +1,105 @@
+#!python
+#!python
+cubit.cmd('reset')
+import numpy as np
+
+vv_inner= np.loadtxt('Documents/ARC_sensor/Cubit_model/ARC_V2E-inner_vv.dat')
+outer_vv = np.loadtxt('Documents/ARC_sensor/Cubit_model/ARC_V2E-outer_vv.dat')
+
+ind = 21
+dist = 0.2
+width = 0.03
+theta_gap = 1.0
+phi_gap = 1.0
+
+dir = (vv_inner[ind+1,:]-vv_inner[ind,:])/np.linalg.norm(vv_inner[ind+1,:]-vv_inner[ind,:])
+center = vv_inner[ind,:] + dist*dir
+new_pts = np.array([center-dir*width/2, center+dir*width/2, center+dir*(width/2+theta_gap), center+dir*(3*width/2 + theta_gap)])
+vv_inner_new = np.insert(vv_inner, ind+1, new_pts, axis = 0)
+
+R=vv_inner[ind,0]
+phis = np.array([0, width/R, (width+phi_gap)/R, (2*width+phi_gap)/R])
+
+offset = 0
+for p in phis:
+    pts_inner = 0
+    for i in range(0, vv_inner_new.shape[0]-1):
+        cubit.cmd("create vertex location {0} {1} {2}".format(vv_inner_new[i,0]*np.cos(p),vv_inner_new[i,0]*np.sin(p),vv_inner_new[i,1]))
+        pts_inner += 1
+    cubit.cmd("create Curve polyline vertex {0} to {1} {2}".format(2*offset+1,2*offset+pts_inner,2*offset+1))
+    offset+=pts_inner
+ 
+
+for i in range(1,len(phis)):
+    for j in range(pts_inner):
+        cubit.cmd("sweep curve {0} zaxis angle {1}".format(j+1+(i-1)*pts_inner,(phis[i]-phis[i-1])*180/np.pi))
+
+for j in range(pts_inner):
+    cubit.cmd("sweep curve {0} zaxis angle {1}".format(j+1+(len(phis)-1)*pts_inner,360-phis[-1]*180/np.pi))
+
+cubit.cmd("nodeset 1 add curve 201")
+cubit.cmd("nodeset 2 add curve 23")
+
+tungsten_inds = []
+for i in range(1,pts_inner+1):
+    if i !=(ind+3):
+        tungsten_inds.append(i)
+
+tungsten_inds.append(pts_inner+ind+4)
+tungsten_inds.append(2*pts_inner+ind + 2)
+tungsten_inds.append(2*pts_inner +ind + 3)
+tungsten_inds.append(2*pts_inner +ind + 4)
+tungsten_inds.append(3*pts_inner+ind+2)
+ss_inds = []
+for i in range(1, 4*pts_inner+1):
+    if i not in tungsten_inds:
+        ss_inds.append(i)
+
+
+cubit.cmd("set duplicate block elements off")
+
+for x in tungsten_inds:
+    cubit.cmd("block 1 add surface {0}".format(x))
+
+for x in ss_inds:
+    cubit.cmd("block 2 add surface {0}".format(x))
+
+cubit.cmd("create vertex on curve 536 fraction 0.5")
+cubit.cmd("create vertex on curve 537 fraction 0.5")
+cubit.cmd("split surface 131 across location vertex 577 578")
+
+cubit.cmd("nodeset 3 add curve 577")
+cubit.cmd("block 1 add surface 145")
+cubit.cmd("block 1 add surface 146")
+
+
+cubit.cmd("imprint all")
+cubit.cmd("merge all")
+
+cubit.cmd("set trimesher coarse off")
+cubit.cmd("set trimesher geometry sizing off")
+cubit.cmd("surface all scheme trimesh")
+
+cubit.cmd("surface all size 0.11")
+
+for x in tungsten_inds:
+    cubit.cmd("surface {0} size 0.02".format(x))
+
+cubit.cmd("surface 145 size 0.02")
+cubit.cmd("surface 146 size 0.02")
+cubit.cmd("mesh surface all")
+
+
+
+cubit.cmd("set large exodus file on")
+cubit.cmd('export Genesis "ARC_V2E_coil_1m_highres.g" overwrite block all')
+
+
+
+
+
+
+
+
+
+
